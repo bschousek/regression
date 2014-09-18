@@ -1,0 +1,160 @@
+---
+title: Does Transmission Type Affect Fuel Economy?
+author: "Brian Schousek September 2014"
+output:
+    pdf_document:
+        
+        includes:
+            in_header: header2.tex
+        highlight: pygments
+fontsize: 10pt
+geometry: margin=0.8in
+
+---
+```{r,echo=FALSE}
+library(corrgram)
+library(car)
+library(xtable)
+compare<-t.test(mpg~am,data=mtcars)
+mycars=mtcars
+mycars$cyl=factor(mycars$cyl)
+mycars$vs=factor(mycars$vs,labels=c("V","S"))
+mycars$carb=factor(mycars$carb)
+mycars$gear=factor(mycars$gear)
+mycars$am=factor(mycars$am,labels=c("automatic","manual"))
+
+compare_am=t.test(mpg~am,data=mycars)
+
+```
+
+### Executive summary
+Common wisdom holds that manual transmissions achieve better fuel efficiency than automatic transmissions. Data from Motor Trend for 32 1973-74 model automobiles (from the mtcars data set) is analyzed here to test that idea. In the end, it is shown that there is no demonstrable statistical difference between vehicles with automatic and manual transmissions.
+
+### First model
+We first examine a naive model taking into account only the difference between automatic and manual transmissions. A Welch Two sample t-test tells us that the means of mileage based on transmission are not equal, with manual transmissions having a mean value of `r round(compare_am$estimate["mean in group manual"],1)` mpg and automatics having `r round(compare_am$estimate["mean in group automatic"],1)` mpg with a p-value of `r compare_am$p.value` which seems pretty convincing. See Figure 1 in the appendix for a boxplot of the data.
+
+
+###Exploratory Analysis
+Taking a look at the list of cars included, however, reveals a wide variety of vehicle types. They range from a four cylinder Toyota Corona to a Ferrari Dino. The differences between these many vehicles go far beyond the type of transmission. Figure 2 in the appendix shows a corrgram of all the possible predictors. As can be seen, mileage has very strong correlations (>0.70) with cylinders,displacement, horsepower and weight. Correlation with transmission type is strong at 0.60. Other parameters with correlations greater than the transmission type include rear axle ratio (drat) and engine configuration (vs, or V vs straight.) Let us consider two more models: one with only the very strong coefficients and the other including all coefficients with correlation at least as strong as the transmission type.
+
+### Second Model: Very Strong correlations
+``` {r VSmodel,echo=FALSE}
+vsmodel=lm(mpg~cyl+disp+hp+wt,data=mycars)
+vsmodel_i=lm(mpg~cyl+disp+hp+wt+cyl*disp,data=mycars)
+```
+Fitting a model of mileage versus cylinders, displacement, horsepower and weight yields a fit with an adjusted R-squared of `r summary(vsmodel)$adj.r.squared` but an examination of the output shows that only coefficients for weight and factor levels for 4 cylinder and 6 cylinder reach significance. Noting that displacement and cylinder count are strongly physically related the model was refined to include interaction between cylinder count and displacement. In this refined model all coefficients but horspower achieved significance and the adjusted R squared value increases to `r summary(vsmodel_i)$adj.r.squared`. Residuals for the fitted refined model have a mean of `r round(mean(residuals(vsmodel_i)),1)` and standard deviation of `r round(sd(residuals(vsmodel_i)),1)`.
+
+
+
+### Third Model: Strong correlations
+``` {r smodel,echo=FALSE,}
+smodel=lm(mpg~cyl+disp+hp+wt+cyl*disp+am+drat+vs,data=mycars)
+
+```
+A third model was fitted which includes the second model predictors (including cylinder/displacement interaction) and adding transmission type, axle ratio, and engine configuration. The adjusted R squared value for this model was actually worse than the second model, at `r summary(smodel)$adj.r.squared` compared to the previous `r summary(vsmodel_i)$adj.r.squared`. The magnitude and distribution of overall residuals remain about the same as well with a mean of `r round(mean(residuals(smodel)),1)` and standard deviation of `r round(sd(residuals(smodel)),1)`.
+
+### Final model: Very strong correlations + transmission 
+```{r fmodel, echo=FALSE}
+fmodel=lm(mpg ~ cyl + disp + hp+wt + cyl * disp+am,data=mycars)
+```
+Since adding the other strong correlation terms seems to have reduced the overall R-squared value, and didn't improve the residuals, we choose for a final model just the very strong predictors with transmission type added. This leaves us with an adjusted R-squared of `r summary(fmodel)$adj.r.squared` which is slightly lower than that of the refined second model.. Residuals have a mean of `r round(mean(residuals(fmodel)),1)` and standard deviation of `r round(sd(residuals(fmodel)),1)`.
+<!-- Removed for length
+``` {r Table0,echo=F,results='asis'}
+print(xtable(summary(fmodel)),file="table0.tex",floating=FALSE)
+```
+
+\begin{table}[ht]
+\centering
+\scalebox{.75}{\input{./table0}}
+\caption{Summary of Final Fit}
+\end{table}
+-->
+
+### Residuals and Diagnostics
+A plot of residuals per predictor is shown as Figure 3 in the appendix. Little evidence of heteroscedasticity is present and the residuals appear comfortably linear. Diagnostic plots in Figure 4 further highlight these observations, and the Normal QQ plot indicates that the residuals are comfortably normal. The Hornet 4 does have more leverage on the final results than other models. An ANOVA of the model in the table below show all predictors except transmission type and horsepower having significance.
+``` {r Table5,echo=F,results='asis'}
+print(xtable(anova(fmodel)),file="table1.tex",floating=FALSE)
+```
+
+\begin{table}[ht]
+\centering
+\scalebox{.85}{\input{./table1}}
+\caption{Anova of Final Model}
+\end{table}
+
+### Inference and coefficient interpretation
+The coefficients of the final model can be seen in table 2a below. Examining the transmission coefficent (ammanual) from the fit shows that holding all else equal, we could expect that a car with an automatic transmission would have mileage `r fmodel$coefficients["ammanual"]` less than one with a manual transmission. This is directionally similar to what was observed in the very first model which took only transmission type into account. The magnitude of the difference is much less when other confounding variables are taken into account however. Furthermore, the box portion of the boxplot from the first model (Figure 1) does not overlap across transmission type, whereas the box portion of the partial residual boxplot for transmission in the final model (figure 3) does overlap a great deal. 
+
+Examining confidence intervals for the coefficients in table 2b below helps explain this overlap and sheds light on final conclusions. It is apparent that the 95% confidence intervals for both transmission type, weight and horsepower include zero. Based on this uncertainty, it could be possible that vehicles with automatic transmissions actually have better mileage on average than those with manual transmissions.
+``` {r Table7,echo=F,results='asis'}
+print(xtable(summary(fmodel)),file="table2.tex",floating=FALSE)
+```
+
+``` {r Table8,echo=F,results='asis'}
+print(xtable(confint(fmodel)),file="table3.tex",floating=FALSE)
+```
+
+\begin{table}[ht]
+\centering
+\subfloat[Table of Coefficents]{\label{tab:tab1a}\scalebox{.75}{\input{./table2}}}\quad
+\subfloat[Table of ANOVA outupt]{\label{tab:tab1b}\scalebox{.75}{\input{./table3}}}
+\caption{Final Model}
+\end{table}
+
+###Conclusion
+Since the confidence interval on the transmission type coefficient for a complete linear model based on Motor Trend 1974 data includes 0, it can not be conclusively stated that a vehicle with manual transmission has better fuel mileage than one with an automatic transmission.
+\pagebreak
+
+
+# Appendix
+
+###Figure 1: Single Term Model
+```{r Figure1,fig.height=4,fig.width=4,echo=FALSE}
+boxplot(mpg~am,data=mycars)
+
+```
+
+###Figure 2: Correlation of Terms
+``` {r Figure2,fig.height=4,fig.width=4,echo=FALSE}
+corrgram(mtcars, order=F, lower.panel=panel.conf, upper.panel=panel.pie, text.panel=panel.txt)
+```
+<!-- removed to reduce document length
+``` {r Table1}
+summary(vsmodel)
+```
+``` {r Table2}
+ summary(vsmodel_i)
+ ```
+``` {r Table3}
+summary(smodel)
+```
+-->
+
+### Figure 3: Residual Plots
+``` {r Figure3,echo=FALSE,fig.height=7}
+residualPlots(fmodel,tests=F,cex=.5)
+```
+
+### Figure 4: Diagnostics
+``` {r Figure4,echo=FALSE,fig.height=5}
+par(mfrow=c(2,2))
+plot(fmodel)
+```
+
+
+###Computing Environment
+These analyses were done using the following versions of R, the operating system, and add-on packages:
+\tiny
+```{r Environment,echo=FALSE}
+sessionInfo()
+```
+
+\normalsize
+
+### Source Availability
+R Markdown source for this report can be found at [https://github.com/bschousek/regression.git](https://github.com/bschousek/regression.git)
+
+
+This is a class project for Regression Models, a Johns Hopkins Bloomberg School of Public Health Data Science Course through Coursera
+
+
