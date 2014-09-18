@@ -79,7 +79,7 @@ print(xtable(anova(fmodel)),file="table1.tex",floating=FALSE)
 \begin{table}[ht]
 \centering
 \scalebox{.85}{\input{./table1}}
-\caption{Anova of Final Model}
+\caption{ANOVA of Final Model}
 \end{table}
 
 ### Inference and coefficient interpretation
@@ -97,7 +97,7 @@ print(xtable(confint(fmodel)),file="table3.tex",floating=FALSE)
 \begin{table}[ht]
 \centering
 \subfloat[Table of Coefficents]{\label{tab:tab1a}\scalebox{.75}{\input{./table2}}}\quad
-\subfloat[Table of ANOVA outupt]{\label{tab:tab1b}\scalebox{.75}{\input{./table3}}}
+\subfloat[Table of Confidence Intervals]{\label{tab:tab1b}\scalebox{.75}{\input{./table3}}}
 \caption{Final Model}
 \end{table}
 
